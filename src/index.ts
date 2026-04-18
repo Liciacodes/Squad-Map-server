@@ -46,6 +46,7 @@ const events = new Map<string, Event>()
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id)
+  const EVENT_EXPIRE_TIME = 1000 * 60 * 60 // 1 hour
 
   socket.on('join-event', ({ eventCode, eventName, userName, latitude, longitude }: JoinEventPayLoad) => {
     // create event if it doesn't exist
@@ -56,6 +57,12 @@ io.on('connection', (socket) => {
         users: new Map()
       })
     }
+
+    setTimeout(() => {
+   events.delete(eventCode)
+   console.log(`Event ${eventCode} expired and removed from memory`)
+
+    }, EVENT_EXPIRE_TIME)
 
     const event = events.get(eventCode)!
 
