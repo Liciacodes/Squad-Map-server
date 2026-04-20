@@ -49,6 +49,11 @@ io.on('connection', (socket) => {
   const EVENT_EXPIRE_TIME = 1000 * 60 * 60 // 1 hour
 
   socket.on('join-event', ({ eventCode, eventName, userName, latitude, longitude }: JoinEventPayLoad) => {
+    
+    if (!events.has(eventCode) && !eventName) {
+      socket.emit('event-not-found')
+      return
+    }
     // create event if it doesn't exist
     if (!events.has(eventCode)) {
       events.set(eventCode, {
