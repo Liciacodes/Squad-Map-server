@@ -25,6 +25,8 @@ interface Event {
   code: string;
   name: string;
   users: Map<string, User>;
+  createdAt: number;
+  creatorId: string;
 }
 
 interface JoinEventPayload {
@@ -66,6 +68,8 @@ io.on("connection", (socket) => {
           code: eventCode,
           name: eventName!,
           users: new Map(),
+          createdAt: Date.now(),
+          creatorId: socket.id,
         });
 
         setTimeout(() => {
@@ -98,6 +102,7 @@ io.on("connection", (socket) => {
 
       socket.emit("event-users", {
         eventName: event.name,
+        createdAt: event.createdAt,
         users: Array.from(event.users.values()),
       });
 
@@ -176,14 +181,31 @@ io.on("connection", (socket) => {
       const user = event.users.get(socket.id);
       const userName = user ? user.name : "Someone";
       event.users.delete(socket.id);
+      if(event.creatorId === socket.id) {
+        io.to(room).emit("event-ended");
+        events.delete(room);
+        console.log(`Event ${room} ended due to creator disconnect`);
+        
+      } else {
+         socket.to(room).emit("user-left", socket.id,userName);
+      }
 
-      socket.to(room).emit("user-left", socket.id,userName);
+     
     }
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
+});
+
+app.get('/event/:code', (req, res) => {
+  const event = events.get(req.params.code);
+  if (!event) {
+    res.json({ exists: false, count: 0, name: '', createdAt: null });
+    return;
+  }
+  res.json({ exists: true, count: event.users.size, name: event.name, createdAt: event.createdAt });
 });
 
 httpServer.listen(3001, () => {
