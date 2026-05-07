@@ -173,26 +173,42 @@ io.on("connection", (socket) => {
     console.log(`Event ${eventCode} ended by creator`);
   });
 
-  socket.on("disconnecting", () => {
-    for (const room of socket.rooms) {
-      const event = events.get(room);
-      if (!event) continue;
-      event.users.delete(socket.id);
-      const user = event.users.get(socket.id);
-      const userName = user ? user.name : "Someone";
-      event.users.delete(socket.id);
-      if(event.creatorId === socket.id) {
-        io.to(room).emit("event-ended");
-        events.delete(room);
-        console.log(`Event ${room} ended due to creator disconnect`);
+  // socket.on("disconnecting", () => {
+  //   for (const room of socket.rooms) {
+  //     const event = events.get(room);
+  //     if (!event) continue;
+  //     event.users.delete(socket.id);
+  //     const user = event.users.get(socket.id);
+  //     const userName = user ? user.name : "Someone";
+  //     event.users.delete(socket.id);
+  //     if(event.creatorId === socket.id) {
+  //       io.to(room).emit("event-ended");
+  //       events.delete(room);
+  //       console.log(`Event ${room} ended due to creator disconnect`);
         
-      } else {
-         socket.to(room).emit("user-left", socket.id,userName);
-      }
+  //     } else {
+  //        socket.to(room).emit("user-left", socket.id,userName);
+  //     }
 
      
-    }
-  });
+  //   }
+  // });
+
+  socket.on("disconnecting", () => {
+  for (const room of socket.rooms) {
+    const event = events.get(room);
+    if (!event) continue;
+
+    const user = event.users.get(socket.id)
+    const userName = user ? user.name : "Someone"
+
+    event.users.delete(socket.id);
+
+    // only notify others that user left — never end event on disconnect
+    // creator can refresh and rejoin within the 1 hour window
+    socket.to(room).emit("user-left", socket.id, userName);
+  }
+});
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
