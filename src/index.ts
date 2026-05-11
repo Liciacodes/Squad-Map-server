@@ -74,6 +74,7 @@ io.on("connection", (socket) => {
 
         setTimeout(() => {
           if (events.has(eventCode)) {
+            io.to(eventCode).emit('event-ended')
             events.delete(eventCode);
             console.log(`Event ${eventCode} expired`);
           }
@@ -204,8 +205,7 @@ io.on("connection", (socket) => {
 
     event.users.delete(socket.id);
 
-    // only notify others that user left — never end event on disconnect
-    // creator can refresh and rejoin within the 1 hour window
+ 
     socket.to(room).emit("user-left", socket.id, userName);
   }
 });
