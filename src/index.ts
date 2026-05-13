@@ -44,7 +44,7 @@ interface LocationUpdatePayload {
 }
 
 const events = new Map<string, Event>();
-const EVENT_EXPIRE_TIME = 1000 * 60 ;
+const EVENT_EXPIRE_TIME = 1000 * 60 * 60; // 1 hour;
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
