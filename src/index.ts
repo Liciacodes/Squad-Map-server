@@ -63,6 +63,9 @@ const MAX_USER_NAME_LENGTH = 50;
 const MAX_EVENT_NAME_LENGTH = 80;
 const LOOKUP_WINDOW_MS = 1000 * 60; // 1 minute
 const MAX_LOOKUPS_PER_WINDOW = 60;
+const MAX_EVENTS = 500;
+const MAX_USERS_PER_EVENT = 50;
+const MIN_LOCATION_UPDATE_INTERVAL_MS = 1000;
 
 // event lookups per IP, so codes can't be guessed in bulk
 const lookups = new Map<string, { count: number; windowStart: number }>();
@@ -204,6 +207,12 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // events live in memory, so cap how many can exist at once
+    if (events.size >= MAX_EVENTS) {
+      socket.emit("event-create-failed", { reason: "server-full" });
+      return;
+    }
+
     const event: Event = {
       code: data.eventCode,
       name: data.eventName,
@@ -233,6 +242,15 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // every update goes to everyone else, so big events get expensive fast
+    if (
+      event.users.size >= MAX_USERS_PER_EVENT &&
+      !event.users.has(socket.id)
+    ) {
+      socket.emit("event-full");
+      return;
+    }
+
     addUserToEvent(socket, event, data);
   });
 
@@ -246,6 +264,12 @@ io.on("connection", (socket) => {
 
     const user = event.users.get(socket.id);
     if (!user) return;
+
+    // drop updates that arrive faster than the app ever sends them
+    const now = Date.now();
+    const lastUpdate: number = socket.data.lastLocationUpdate ?? 0;
+    if (now - lastUpdate < MIN_LOCATION_UPDATE_INTERVAL_MS) return;
+    socket.data.lastLocationUpdate = now;
 
     user.latitude = latitude;
     user.longitude = longitude;
